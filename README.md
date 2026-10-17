@@ -4,13 +4,15 @@ A simple, large-display countdown timer for the public comment period of city co
 
 ## Features
 
-- Giant countdown readable from across a chamber
+- Giant minutes:seconds countdown readable from across a chamber
 - Status label (Ready, Speaking, Wrap up, Paused, Time) and a progress bar
 - Clock turns amber at 30 seconds remaining and red at zero
 - Adjustable time limit (default 2:00) with 1:00, 2:00 and 3:00 presets; the limit is remembered between visits
 - The limit can only be changed while the timer is reset, so it can't be altered mid-speaker
 - Keeps the screen awake while running, where the browser supports it
 - Light and dark modes follow the system setting
+- Colors and fonts echo the City of Cheney website
+- Works offline once loaded, and can be installed as an app (see [Offline use](#offline-use))
 
 ## Usage
 
