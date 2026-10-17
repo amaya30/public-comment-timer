@@ -7,6 +7,7 @@ A simple, large-display countdown timer for the public comment period of city co
 - Giant minutes:seconds countdown readable from across a chamber
 - Status label (Ready, Speaking, Wrap up, Paused, Time) and a progress bar
 - Clock turns amber at 30 seconds remaining and red at zero
+- Optional chime when time runs out (off by default; the setting is remembered between visits)
 - Adjustable time limit (default 2:00) with 1:00, 2:00 and 3:00 presets; the limit is remembered between visits
 - The limit can only be changed while the timer is reset, so it can't be altered mid-speaker
 - Keeps the screen awake while running, where the browser supports it
@@ -29,6 +30,7 @@ Fonts are self-hosted and a service worker caches the app, so after one visit ov
 | Start / Pause / Resume button, or `Space` | Start, pause or resume the countdown |
 | Reset button, or `R` | Return the clock to the full time limit |
 | Minutes / Seconds fields, or preset buttons | Set the time limit (only while reset) |
+| Sound button | Turn the end-of-time chime on or off |
 | Theme button | Switch between light and dark themes |
 
 ## Deployment

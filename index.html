@@ -217,7 +217,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-radius: 4px;
 }
 .presets { display: flex; gap: 8px; flex-wrap: wrap; }
-.presets button, .theme-btn {
+.presets button, .theme-btn, .sound-btn {
   font-size: 1.1rem;
   min-height: 0;
   padding: 10px 16px;
@@ -280,6 +280,10 @@ kbd {
       <button type="button" data-preset="180">3:00</button>
     </div>
     <div class="field">
+      <label for="soundBtn">Sound at zero</label>
+      <button type="button" class="sound-btn" id="soundBtn" aria-pressed="false"></button>
+    </div>
+    <div class="field">
       <label for="themeBtn">Theme</label>
       <button type="button" class="theme-btn" id="themeBtn"></button>
     </div>
@@ -305,7 +309,8 @@ kbd {
     minIn: document.getElementById("minInput"),
     secIn: document.getElementById("secInput"),
     presets: document.querySelectorAll("[data-preset]"),
-    theme: document.getElementById("themeBtn")
+    theme: document.getElementById("themeBtn"),
+    sound: document.getElementById("soundBtn")
   };
 
   var maxMs = DEFAULT_SECONDS * 1000;
@@ -314,7 +319,11 @@ kbd {
   var endAt = 0;
   var raf = 0;
   var wakeLock = null;
+  var SOUND_KEY = "publicCommentTimer.sound";
+  var soundOn = false;
+  var audioCtx = null;
 
+  try { soundOn = localStorage.getItem(SOUND_KEY) === "1"; } catch (e) {}
   try {
     var saved = parseInt(localStorage.getItem(STORE_KEY), 10);
     if (saved > 0 && saved <= 3599) { maxMs = saved * 1000; remaining = maxMs; }
@@ -364,10 +373,39 @@ kbd {
       running = false;
       releaseWake();
       render();
+      if (soundOn) chime();
       return;
     }
     render();
     raf = requestAnimationFrame(tick);
+  }
+
+  // Browsers only allow audio after a user gesture, so the context is created
+  // (or resumed) when the sound is switched on and when the timer is started.
+  function getAudio() {
+    if (!audioCtx) {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (Ctor) { try { audioCtx = new Ctor(); } catch (e) {} }
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  function chime() {
+    var c = getAudio();
+    if (!c) return;
+    var t0 = c.currentTime + 0.02;
+    for (var n = 0; n < 3; n++) {
+      var o = c.createOscillator(), g = c.createGain(), at = t0 + n * 0.4;
+      o.type = "sine";
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(0.4, at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.3);
+      o.connect(g);
+      g.connect(c.destination);
+      o.start(at);
+      o.stop(at + 0.32);
+    }
   }
 
   function requestWake() {
@@ -385,6 +423,7 @@ kbd {
     if (running || remaining <= 0) return;
     endAt = performance.now() + remaining;
     running = true;
+    if (soundOn) getAudio();
     requestWake();
     render();
     raf = requestAnimationFrame(tick);
@@ -446,6 +485,17 @@ kbd {
     if (!document.hidden && running) requestWake();
   });
 
+  function renderSound() {
+    el.sound.textContent = soundOn ? "Sound on" : "Sound off";
+    el.sound.setAttribute("aria-pressed", soundOn ? "true" : "false");
+  }
+  el.sound.addEventListener("click", function () {
+    soundOn = !soundOn;
+    try { localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0"); } catch (e) {}
+    renderSound();
+    if (soundOn) chime();
+  });
+
   var THEME_KEY = "publicCommentTimer.theme";
   var darkQuery = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
   function currentTheme() {
@@ -467,6 +517,7 @@ kbd {
   syncInputs();
   render();
   renderTheme();
+  renderSound();
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
