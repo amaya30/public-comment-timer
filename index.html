@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<script>
+try {
+  var t = localStorage.getItem("publicCommentTimer.theme");
+  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+} catch (e) {}
+</script>
 <title>Public Comment Timer</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E.a%7Bfill:%23237698%7D.b%7Bfill:%23fff%7D@media (prefers-color-scheme:dark)%7B.a%7Bfill:%235fb4d6%7D.b%7Bfill:%230a1d27%7D%7D%3C/style%3E%3Ccircle class='a' cx='16' cy='16' r='15'/%3E%3Cpath class='b' d='M16 16V6a10 10 0 0 1 10 10z'/%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
@@ -211,7 +217,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-radius: 4px;
 }
 .presets { display: flex; gap: 8px; flex-wrap: wrap; }
-.presets button {
+.presets button, .theme-btn {
   font-size: 1.1rem;
   min-height: 0;
   padding: 10px 16px;
@@ -273,6 +279,10 @@ kbd {
       <button type="button" data-preset="120">2:00</button>
       <button type="button" data-preset="180">3:00</button>
     </div>
+    <div class="field">
+      <label for="themeBtn">Theme</label>
+      <button type="button" class="theme-btn" id="themeBtn"></button>
+    </div>
     <p class="hint">Limit can only be changed after the timer is reset. Shortcuts: <kbd>Space</kbd> start or pause, <kbd>R</kbd> reset. The clock turns amber at 30 seconds and red at zero.</p>
   </section>
 </main>
@@ -294,7 +304,8 @@ kbd {
     reset: document.getElementById("resetBtn"),
     minIn: document.getElementById("minInput"),
     secIn: document.getElementById("secInput"),
-    presets: document.querySelectorAll("[data-preset]")
+    presets: document.querySelectorAll("[data-preset]"),
+    theme: document.getElementById("themeBtn")
   };
 
   var maxMs = DEFAULT_SECONDS * 1000;
@@ -435,8 +446,27 @@ kbd {
     if (!document.hidden && running) requestWake();
   });
 
+  var THEME_KEY = "publicCommentTimer.theme";
+  var darkQuery = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+  function currentTheme() {
+    var t = document.documentElement.dataset.theme;
+    if (t === "light" || t === "dark") return t;
+    return darkQuery && darkQuery.matches ? "dark" : "light";
+  }
+  function renderTheme() {
+    el.theme.textContent = currentTheme() === "dark" ? "Switch to light" : "Switch to dark";
+  }
+  el.theme.addEventListener("click", function () {
+    var next = currentTheme() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    renderTheme();
+  });
+  if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", renderTheme);
+
   syncInputs();
   render();
+  renderTheme();
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

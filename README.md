@@ -10,7 +10,7 @@ A simple, large-display countdown timer for the public comment period of city co
 - Adjustable time limit (default 2:00) with 1:00, 2:00 and 3:00 presets; the limit is remembered between visits
 - The limit can only be changed while the timer is reset, so it can't be altered mid-speaker
 - Keeps the screen awake while running, where the browser supports it
-- Light and dark modes follow the system setting
+- Light and dark themes: follows the system setting by default, with a toggle in the settings panel that is remembered between visits
 - Colors and fonts echo the City of Cheney website
 - Works offline once loaded, and can be installed as an app (see [Offline use](#offline-use))
 
@@ -29,6 +29,7 @@ Fonts are self-hosted and a service worker caches the app, so after one visit ov
 | Start / Pause / Resume button, or `Space` | Start, pause or resume the countdown |
 | Reset button, or `R` | Return the clock to the full time limit |
 | Minutes / Seconds fields, or preset buttons | Set the time limit (only while reset) |
+| Theme button | Switch between light and dark themes |
 
 ## Deployment
 
