@@ -14,7 +14,13 @@ A simple, large-display countdown timer for the public comment period of city co
 
 ## Usage
 
-Open `index.html` in a browser. It is a single static file with no build step, so it can be hosted on any static web host or run locally.
+Open `index.html` in a browser. There is no build step, so it can be hosted on any static web host.
+
+### Offline use
+
+Fonts are self-hosted and a service worker caches the app, so after one visit over HTTPS it works with no network, and it can be installed to the home screen or desktop. Service workers don't run from `file://`, so opening the file directly works but won't be cached. Host all the files together (`index.html`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `fonts/`). When you change any of them, bump `CACHE` in `sw.js` so installed copies update.
+
+### Controls
 
 | Control | Action |
 | --- | --- |
