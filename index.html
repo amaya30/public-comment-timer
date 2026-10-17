@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Public Comment Timer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: one centered stage. Status line, giant countdown, progress bar, two big buttons, small settings strip below. */
+:root {
+  --bg: #f1f4f7;
+  --panel: #ffffff;
+  --fg: #13202c;
+  --muted: #566879;
+  --line: #d2dae2;
+  --accent: #1d5c88;
+  --on-accent: #ffffff;
+  --go: #1b7a49;
+  --warn: #a85f00;
+  --stop: #bf2430;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, sans-serif;
+  --font-digits: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d141b;
+    --panel: #151f29;
+    --fg: #e9eff4;
+    --muted: #93a4b3;
+    --line: #29363f;
+    --accent: #72b6e3;
+    --on-accent: #0b1620;
+    --go: #4fc88c;
+    --warn: #f2b544;
+    --stop: #ff7070;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d141b;
+  --panel: #151f29;
+  --fg: #e9eff4;
+  --muted: #93a4b3;
+  --line: #29363f;
+  --accent: #72b6e3;
+  --on-accent: #0b1620;
+  --go: #4fc88c;
+  --warn: #f2b544;
+  --stop: #ff7070;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+main {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  justify-content: center;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.status {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 16px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  color: var(--muted);
+}
+.status[data-state="running"] { color: var(--go); }
+.status[data-state="warn"] { color: var(--warn); }
+.status[data-state="done"] { color: var(--stop); }
+
+.clock {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-digits);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.6rem, 14.2vw, 12.5rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  color: var(--fg);
+}
+.clock[data-state="warn"] { color: var(--warn); }
+.clock[data-state="done"] { color: var(--stop); }
+.clock .ms { opacity: 0.8; }
+
+.bar {
+  height: 14px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--go);
+  transform-origin: left center;
+}
+.bar[data-state="warn"] > i { background: var(--warn); }
+.bar[data-state="done"] > i { background: var(--stop); }
+
+.controls {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+button {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 18px 12px;
+  border-radius: 6px;
+  border: 2px solid var(--accent);
+  cursor: pointer;
+  min-height: 72px;
+}
+button:focus-visible, input:focus-visible {
+  outline: 3px solid var(--fg);
+  outline-offset: 3px;
+}
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-secondary { background: transparent; color: var(--accent); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.settings {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 28px;
+}
+.settings h2 {
+  margin: 0;
+  width: 100%;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 0.9rem; color: var(--muted); }
+.field input {
+  width: 96px;
+  font-family: var(--font-digits);
+  font-size: 1.4rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.presets button {
+  font-size: 1.1rem;
+  min-height: 0;
+  padding: 10px 16px;
+  letter-spacing: 0.08em;
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--line);
+}
+.hint { margin: 0; width: 100%; font-size: 0.9rem; color: var(--muted); }
+kbd {
+  font-family: var(--font-digits);
+  font-size: 0.85rem;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+@media (max-width: 520px) {
+  .controls { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<main>
+  <div class="status-row">
+    <h1 class="title">Public Comment</h1>
+    <div class="status" id="status" data-state="idle" role="status" aria-live="polite">Ready</div>
+  </div>
+
+  <p class="clock" id="clock" data-state="idle" aria-label="Time remaining">
+    <span id="mm">02</span>:<span id="ss">00</span>.<span class="ms" id="ms">000</span>
+  </p>
+
+  <div class="bar" id="bar" data-state="idle" aria-hidden="true"><i id="fill"></i></div>
+
+  <div class="controls">
+    <button type="button" class="btn-primary" id="startBtn">Start</button>
+    <button type="button" class="btn-secondary" id="resetBtn">Reset</button>
+  </div>
+
+  <section class="settings" aria-label="Timer settings">
+    <h2>Time limit</h2>
+    <div class="field">
+      <label for="minInput">Minutes</label>
+      <input id="minInput" type="number" min="0" max="59" step="1" value="2" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="secInput">Seconds</label>
+      <input id="secInput" type="number" min="0" max="59" step="1" value="0" inputmode="numeric">
+    </div>
+    <div class="presets" role="group" aria-label="Quick limits">
+      <button type="button" data-preset="60">1:00</button>
+      <button type="button" data-preset="120">2:00</button>
+      <button type="button" data-preset="180">3:00</button>
+    </div>
+    <p class="hint">Limit can only be changed after the timer is reset. Shortcuts: <kbd>Space</kbd> start or pause, <kbd>R</kbd> reset. The clock turns amber at 30 seconds and red at zero.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var WARN_MS = 30000;
+  var DEFAULT_SECONDS = 120;
+  var STORE_KEY = "publicCommentTimer.limitSeconds";
+
+  var el = {
+    mm: document.getElementById("mm"),
+    ss: document.getElementById("ss"),
+    ms: document.getElementById("ms"),
+    clock: document.getElementById("clock"),
+    bar: document.getElementById("bar"),
+    fill: document.getElementById("fill"),
+    status: document.getElementById("status"),
+    start: document.getElementById("startBtn"),
+    reset: document.getElementById("resetBtn"),
+    minIn: document.getElementById("minInput"),
+    secIn: document.getElementById("secInput"),
+    presets: document.querySelectorAll("[data-preset]")
+  };
+
+  var maxMs = DEFAULT_SECONDS * 1000;
+  var remaining = maxMs;
+  var running = false;
+  var endAt = 0;
+  var raf = 0;
+  var wakeLock = null;
+
+  try {
+    var saved = parseInt(localStorage.getItem(STORE_KEY), 10);
+    if (saved > 0 && saved <= 3599) { maxMs = saved * 1000; remaining = maxMs; }
+  } catch (e) {}
+
+  function pad(n, w) { n = String(n); while (n.length < w) n = "0" + n; return n; }
+
+  function stateFor(ms) {
+    if (ms <= 0) return "done";
+    if (ms <= WARN_MS && (running || ms < maxMs)) return "warn";
+    return running ? "running" : "idle";
+  }
+
+  function render() {
+    var ms = Math.max(0, Math.ceil(remaining));
+    el.mm.textContent = pad(Math.floor(ms / 60000), 2);
+    el.ss.textContent = pad(Math.floor((ms % 60000) / 1000), 2);
+    el.ms.textContent = pad(ms % 1000, 3);
+
+    var st = stateFor(ms);
+    var barSt = st;
+    el.clock.dataset.state = st === "running" || st === "idle" ? "idle" : st;
+    el.bar.dataset.state = st === "warn" || st === "done" ? st : "idle";
+    el.fill.style.transform = "scaleX(" + (maxMs > 0 ? ms / maxMs : 0) + ")";
+
+    var label = "Ready";
+    if (ms <= 0) label = "Time";
+    else if (running) label = ms <= WARN_MS ? "Wrap up" : "Speaking";
+    else if (ms < maxMs) label = "Paused";
+    el.status.textContent = label;
+    el.status.dataset.state = barSt === "idle" ? "idle" : barSt;
+
+    el.start.textContent = running ? "Pause" : (ms < maxMs && ms > 0 ? "Resume" : "Start");
+    el.start.disabled = ms <= 0;
+
+    var lock = running || ms < maxMs;
+    el.minIn.disabled = lock;
+    el.secIn.disabled = lock;
+    for (var i = 0; i < el.presets.length; i++) el.presets[i].disabled = lock;
+  }
+
+  function tick() {
+    if (!running) return;
+    remaining = endAt - performance.now();
+    if (remaining <= 0) {
+      remaining = 0;
+      running = false;
+      releaseWake();
+      render();
+      return;
+    }
+    render();
+    raf = requestAnimationFrame(tick);
+  }
+
+  function requestWake() {
+    try {
+      if (navigator.wakeLock && navigator.wakeLock.request) {
+        navigator.wakeLock.request("screen").then(function (l) { wakeLock = l; }, function () {});
+      }
+    } catch (e) {}
+  }
+  function releaseWake() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+  }
+
+  function start() {
+    if (running || remaining <= 0) return;
+    endAt = performance.now() + remaining;
+    running = true;
+    requestWake();
+    render();
+    raf = requestAnimationFrame(tick);
+  }
+  function pause() {
+    if (!running) return;
+    remaining = Math.max(0, endAt - performance.now());
+    running = false;
+    cancelAnimationFrame(raf);
+    releaseWake();
+    render();
+  }
+  function reset() {
+    running = false;
+    cancelAnimationFrame(raf);
+    releaseWake();
+    remaining = maxMs;
+    render();
+  }
+  function toggle() { running ? pause() : start(); }
+
+  function syncInputs() {
+    var total = Math.round(maxMs / 1000);
+    el.minIn.value = Math.floor(total / 60);
+    el.secIn.value = total % 60;
+  }
+  function applyLimit(seconds) {
+    if (running || remaining < maxMs) return;
+    seconds =Math.max(1, Math.min(3599, Math.round(seconds)));
+    maxMs = seconds * 1000;
+    try { localStorage.setItem(STORE_KEY, String(seconds)); } catch (e) {}
+    syncInputs();
+    reset();
+  }
+  function readInputs() {
+    var m = parseInt(el.minIn.value, 10) || 0;
+    var s = parseInt(el.secIn.value, 10) || 0;
+    applyLimit(m * 60 + s);
+  }
+
+  el.start.addEventListener("click", toggle);
+  el.reset.addEventListener("click", reset);
+  el.minIn.addEventListener("change", readInputs);
+  el.secIn.addEventListener("change", readInputs);
+  for (var i = 0; i < el.presets.length; i++) {
+    el.presets[i].addEventListener("click", function (ev) {
+      applyLimit(parseInt(ev.currentTarget.dataset.preset, 10));
+    });
+  }
+
+  document.addEventListener("keydown", function (ev) {
+    var t = ev.target && ev.target.tagName;
+    if (t === "INPUT" || t === "BUTTON" || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.code === "Space") { ev.preventDefault(); toggle(); }
+    else if (ev.key === "r" || ev.key === "R") { reset(); }
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && running) requestWake();
+  });
+
+  syncInputs();
+  render();
+})();
+</script>
+</body>
+</html>
