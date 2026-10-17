@@ -1,6 +1,6 @@
 // Cache-first service worker so the timer works offline after the first visit.
 // Bump CACHE when any cached file changes so clients pick up the update.
-var CACHE = "public-comment-timer-v5";
+var CACHE = "public-comment-timer-v7";
 var FILES = [
   "./",
   "index.html",
@@ -11,9 +11,7 @@ var FILES = [
   "fonts/Barlow-600.ttf",
   "fonts/BarlowCondensed-500.ttf",
   "fonts/BarlowCondensed-600.ttf",
-  "fonts/BarlowCondensed-700.ttf",
-  "fonts/IBMPlexMono-500.ttf",
-  "fonts/IBMPlexMono-600.ttf"
+  "fonts/BarlowCondensed-700.ttf"
 ];
 
 self.addEventListener("install", function (e) {

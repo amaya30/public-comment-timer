@@ -22,8 +22,6 @@ try {
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/BarlowCondensed-500.ttf") format("truetype"); }
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/BarlowCondensed-600.ttf") format("truetype"); }
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/BarlowCondensed-700.ttf") format("truetype"); }
-@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/IBMPlexMono-500.ttf") format("truetype"); }
-@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/IBMPlexMono-600.ttf") format("truetype"); }
 /* Layout: one centered stage. Status line, giant countdown, progress bar, two big buttons, small settings strip below. */
 :root {
   --bg: #f5f5f5;
@@ -39,7 +37,6 @@ try {
   --stop: #d01f26;
   --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --font-body: "Barlow", system-ui, sans-serif;
-  --font-digits: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -174,7 +171,7 @@ button {
   cursor: pointer;
   min-height: 72px;
 }
-button:focus-visible, input:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible {
   outline: 3px solid var(--fg);
   outline-offset: 3px;
 }
@@ -203,12 +200,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   color: var(--muted);
 }
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 0.9rem; color: var(--muted); }
-.field input {
+.field label { font-family: var(--font-display); font-weight: 500; font-size: 1.1rem; letter-spacing: 0.04em; color: var(--muted); }
+.field input, .field select {
   width: 96px;
-  font-family: var(--font-digits);
-  font-size: 1.4rem;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   padding: 8px 10px;
   background: var(--bg);
@@ -216,6 +213,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border: 1px solid var(--line);
   border-radius: 4px;
 }
+.field select { width: auto; font-size: 1.4rem; }
 .presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .presets button, .theme-btn, .sound-btn {
   font-size: 1.1rem;
@@ -226,10 +224,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   color: var(--fg);
   border: 1px solid var(--line);
 }
-.hint { margin: 0; width: 100%; font-size: 0.9rem; color: var(--muted); }
+.hint { margin: 0; width: 100%; font-family: var(--font-display); font-weight: 500; font-size: 1.1rem; letter-spacing: 0.02em; color: var(--muted); }
 kbd {
-  font-family: var(--font-digits);
-  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
   padding: 1px 6px;
   border: 1px solid var(--line);
   border-radius: 3px;
@@ -280,8 +279,16 @@ kbd {
       <button type="button" data-preset="180">3:00</button>
     </div>
     <div class="field">
-      <label for="soundBtn">Sound at zero</label>
+      <label for="soundBtn">Sound</label>
       <button type="button" class="sound-btn" id="soundBtn" aria-pressed="false"></button>
+    </div>
+    <div class="field">
+      <label for="warnSelect">Warning beep</label>
+      <select id="warnSelect">
+        <option value="0">Off</option>
+        <option value="30">At 30 seconds</option>
+        <option value="15">At 15 seconds</option>
+      </select>
     </div>
     <div class="field">
       <label for="themeBtn">Theme</label>
@@ -310,7 +317,8 @@ kbd {
     secIn: document.getElementById("secInput"),
     presets: document.querySelectorAll("[data-preset]"),
     theme: document.getElementById("themeBtn"),
-    sound: document.getElementById("soundBtn")
+    sound: document.getElementById("soundBtn"),
+    warn: document.getElementById("warnSelect")
   };
 
   var maxMs = DEFAULT_SECONDS * 1000;
@@ -321,9 +329,16 @@ kbd {
   var wakeLock = null;
   var SOUND_KEY = "publicCommentTimer.sound";
   var soundOn = false;
+  var WARN_KEY = "publicCommentTimer.warnSeconds";
+  var warnSec = 30;
+  var warned = false;
   var audioCtx = null;
 
   try { soundOn = localStorage.getItem(SOUND_KEY) === "1"; } catch (e) {}
+  try {
+    var savedWarn = localStorage.getItem(WARN_KEY);
+    if (savedWarn === "0" || savedWarn === "15" || savedWarn === "30") warnSec = parseInt(savedWarn, 10);
+  } catch (e) {}
   try {
     var saved = parseInt(localStorage.getItem(STORE_KEY), 10);
     if (saved > 0 && saved <= 3599) { maxMs = saved * 1000; remaining = maxMs; }
@@ -376,6 +391,10 @@ kbd {
       if (soundOn) chime();
       return;
     }
+    if (soundOn && warnSec > 0 && !warned && maxMs > warnSec * 1000 && remaining <= warnSec * 1000) {
+      warned = true;
+      beep();
+    }
     render();
     raf = requestAnimationFrame(tick);
   }
@@ -406,6 +425,23 @@ kbd {
       o.start(at);
       o.stop(at + 0.32);
     }
+  }
+
+  // A single short beep, distinct from the three-beep chime at zero.
+  function beep() {
+    var c = getAudio();
+    if (!c) return;
+    var at = c.currentTime + 0.02;
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = "sine";
+    o.frequency.value = 660;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(0.4, at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, at + 0.5);
+    o.connect(g);
+    g.connect(c.destination);
+    o.start(at);
+    o.stop(at + 0.52);
   }
 
   function requestWake() {
@@ -441,6 +477,7 @@ kbd {
     cancelAnimationFrame(raf);
     releaseWake();
     remaining = maxMs;
+    warned = false;
     render();
   }
   function toggle() { running ? pause() : start(); }
@@ -488,7 +525,14 @@ kbd {
   function renderSound() {
     el.sound.textContent = soundOn ? "Sound on" : "Sound off";
     el.sound.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    el.warn.disabled = !soundOn;
   }
+  el.warn.value = String(warnSec);
+  el.warn.addEventListener("change", function () {
+    warnSec = parseInt(el.warn.value, 10) || 0;
+    try { localStorage.setItem(WARN_KEY, String(warnSec)); } catch (e) {}
+    if (warnSec > 0) beep();
+  });
   el.sound.addEventListener("click", function () {
     soundOn = !soundOn;
     try { localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0"); } catch (e) {}
