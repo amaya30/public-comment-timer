@@ -1,6 +1,6 @@
 // Cache-first service worker so the timer works offline after the first visit.
 // Bump CACHE when any cached file changes so clients pick up the update.
-var CACHE = "public-comment-timer-v1";
+var CACHE = "public-comment-timer-v2";
 var FILES = [
   "./",
   "index.html",
