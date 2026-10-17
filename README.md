@@ -16,7 +16,7 @@ A simple, large-display countdown timer for the public comment period of city co
 
 ## Usage
 
-Open `index.html` in a browser. There is no build step, so it can be hosted on any static web host.
+Use the live timer at https://publiccommenttimer.org, or open `index.html` in a browser. There is no build step, so it can be hosted on any static web host.
 
 ### Offline use
 
@@ -29,3 +29,9 @@ Fonts are self-hosted and a service worker caches the app, so after one visit ov
 | Start / Pause / Resume button, or `Space` | Start, pause or resume the countdown |
 | Reset button, or `R` | Return the clock to the full time limit |
 | Minutes / Seconds fields, or preset buttons | Set the time limit (only while reset) |
+
+## Deployment
+
+The site is hosted on GitHub Pages from the `main` branch (root folder) and served at `publiccommenttimer.org`. Pushing to `main` redeploys it within a minute or two. The `CNAME` file sets the custom domain and should not be removed. DNS uses GitHub's four `A` records on the apex domain and a `www` CNAME to `amaya30.github.io`.
+
+This is an independent tool and is not run by the City of Cheney.
